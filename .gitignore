@@ -1,0 +1,14 @@
+
+*~
+*.swp
+*.log
+*.conf
+*.ini
+*.bak
+*.sq3
+*.json
+composer.lock
+
+/docs/
+/vendor/
+
