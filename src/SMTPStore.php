@@ -13,7 +13,7 @@ use BFITech\ZapCore\Common;
 class SMTPRouteError extends \Exception {
 
 	/** Adding service failed. */
-	const ADD_SRV_FAILED = 0x01;
+	const SRV_ADD_FAILED = 0x01;
 
 	/** Service not found. */
 	const SRV_NOT_FOUND = 0x0201;
@@ -60,8 +60,9 @@ class SMTPStore extends AdminRoute {
 		$key = $host . '-' . $port;
 		if (isset($this->smtp_services[$key])) {
 			$this->logger->warning(sprintf(
-				"SMTP: Service '%s:%s' already added.", $host, $port));
-			return SMTPRouteError::ADD_SRV_FAILED;
+				"SMTP: add service failed: '%s:%s' already added.",
+				$host, $port));
+			return SMTPRouteError::SRV_ADD_FAILED;
 		}
 		$this->smtp_services[$key] = [
 			'host' => $host,
@@ -71,7 +72,7 @@ class SMTPStore extends AdminRoute {
 			'opts' => (array)$opts,
 		];
 		$this->logger->info(sprintf(
-			"SMTP: Service '%s:%s' added.", $host, $port));
+			"SMTP: add service ok: '%s:%s'.", $host, $port));
 		return 0;
 	}
 
@@ -102,7 +103,7 @@ class SMTPStore extends AdminRoute {
 		if ($this->smtp_connection) {
 			$srv = $this->smtp_services[$key];
 			$logger->info(sprintf(
-				"SMTP: Closing existing connection: %s:%s.",
+				"SMTP: close existing connection: %s:%s.",
 				$srv['host'], $srv['port']));
 			$this->smtp_connection->close();
 		}
@@ -111,7 +112,7 @@ class SMTPStore extends AdminRoute {
 		$this->smtp_service = null;
 
 		if (!isset($this->smtp_services[$key])) {
-			$logger->warning("SMTP: Service '$host:$port' not found.");
+			$logger->warning("SMTP: service not found: '$host:$port'.");
 			return $Err::SRV_NOT_FOUND;
 		}
 		$srv = $this->smtp_services[$key];
@@ -120,15 +121,18 @@ class SMTPStore extends AdminRoute {
 		$rv = $smtp->connect($srv['host'], $srv['port'], $srv['timeout'],
 			$srv['opts']);
 		if (!$rv) {
-			$logger->warning("SMTP: Cannot connect to $host:$port.");
+			$logger->warning(
+				"SMTP: open connection failed: $host:$port.");
 			return $Err::CONNECT_FAILED;
 		}
 
+		// @codeCoverageIgnoreStart
 		if ($srv['ssl'] && !$smtp->startTLS()) {
 			$logger->warning(
-				"SMTP: Cannot open TLS connection to $host:$port.");
+				"SMTP: open TLS connection failed: $host:$port.");
 			return $Err::CONNECT_TLS_FAILED;
 		}
+		// @codeCoverageIgnoreEnd
 
 		$this->smtp_connection = $smtp;
 		$this->smtp_service = $srv;
@@ -160,7 +164,7 @@ class SMTPStore extends AdminRoute {
 		$logger = $this->logger;
 
 		if (!$this->smtp_connection) {
-			$logger->warning("SMTP: No connection opened.");
+			$logger->warning("SMTP: no connection opened.");
 			return $Err::NOT_CONNECTED;
 		}
 		$smtp = $this->smtp_connection;
@@ -168,7 +172,7 @@ class SMTPStore extends AdminRoute {
 		# get EHLO and acquire AUTH announcement
 		if (!$smtp->hello($this->smtp_service['host'])) {
 			// @codeCoverageIgnoreStart
-			$logger->warning("SMTP: Cannot send HELO/EHLO.");
+			$logger->warning("SMTP: cannot send HELO/EHLO.");
 			return $Err::HELO_FAILED;
 			// @codeCoverageIgnoreEnd
 		}
@@ -178,7 +182,7 @@ class SMTPStore extends AdminRoute {
 			$realm, $workstation, $OAuth);
 		if (!$authed) {
 			$logger->info(
-				"SMTP: Authentication failed for '$username'.");
+				"SMTP: auth failed for '$username'.");
 			return $Err::AUTH_FAILED;
 		}
 

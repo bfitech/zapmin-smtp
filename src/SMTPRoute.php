@@ -5,7 +5,6 @@ namespace BFITech\ZapAdmin;
 
 
 use BFITech\ZapCore\Common;
-#use SMTPRouteError as Err;
 
 
 /**
@@ -20,7 +19,7 @@ class SMTPRoute extends SMTPStore {
 	 *
 	 * `GET: /smtp/srv`
 	 */
-	public function route_smtp_list($args=null) {
+	public function route_smtp_list() {
 		$this->core->pj([0, $this->smtp_list_services()]);
 	}
 
@@ -46,16 +45,14 @@ class SMTPRoute extends SMTPStore {
 		if ($rv[0] !== 0)
 			return $core::pj($rv, 403);
 
-		if (!isset($rv[1]) || !isset($rv[1]['token']))
-			return $core::pj($rv, 403);
+		$expiration = $this->store->unix_epoch() +
+			$this->adm_get_byway_expiration();
 
 		# alway autologin on success
 		$token = $rv[1]['token'];
 		$this->adm_set_user_token($token);
-		$core::send_cookie(
-			$this->adm_get_token_name(), $token,
-			time() + $this->adm_get_byway_expiration(), '/'
-		);
+		$core::send_cookie($this->adm_get_token_name(), $token,
+			$expiration, '/');
 
 		return $core::pj($rv);
 	}

@@ -22,25 +22,21 @@ class SMTPFixture {
 				file_get_contents($config), true);
 		else {
 			self::$config = [
-				'host_bogus' => [
+				'bogus' => [
 					'host' => 'localhost',
 					'port' => 1587,
 					'ssl' => false,
-					'timeout' => 4,
+					'timeout' => 1,
 					'opts' => [],
-				],
-				'host_valid' => [
-					'host' => null,
-					'port' => null,
-					'ssl' => true,
-					'timeout' => 4,
-					'opts' => [],
-				],
-				'account_bogus' => [
 					'username' => 'you@localhost',
-					'password' => 'blablabla',
+					'password' => 'quux',
 				],
-				'account_valid' => [
+				'valid' => [
+					'host' => null,
+					'port' => 587,
+					'ssl' => true,
+					'timeout' => 1,
+					'opts' => [],
 					'username' => null,
 					'password' => null,
 				],
@@ -59,183 +55,179 @@ class SMTPRouteTest extends TestCase {
 	public static $core;
 
 	public static function setUpBeforeClass() {
-		$_SERVER['REQUEST_URI'] = '/';
-
 		$logfile = __DIR__ . '/zapmin-smtp-test.log';
 		if (file_exists($logfile))
 			unlink($logfile);
 		self::$logger = new Logger(Logger::DEBUG, $logfile);
-
 		SMTPFixture::read_config();
 	}
 
-	public function make_store() {
-		return new SQLite3(['dbname' => ':memory:'], self::$logger);
+	public function make_smtp() {
+		$store = new SQLite3(['dbname' => ':memory:'], self::$logger);
+		$core = (new RouterDev())
+			->config('logger', self::$logger);
+		return new SMTPRoute($store, self::$logger, null, $core);
 	}
 
-	public function make_router() {
-		return new RouterDev('/', 'http://localhost', true,
-			self::$logger);
-	}
-
-	public function make_smtp($core=null, $store=null) {
-		if (!$core)
-			$core = $this->make_router();
-		if (!$store)
-			$store = $this->make_store();
-		return new SMTPRoute([
-			'core_instance' => $core,
-			'store_instance' => $store,
-			'logger_instance' => self::$logger,
-		]);
+	private function make_service($smtp, $args) {
+		extract($args);
+		if (!isset($ssl))
+			$ssl = true;
+		if (!isset($timeout))
+			$timeout = 1;
+		if (!isset($opts))
+			$opts = [];
+		$smtp->smtp_add_service($host, $port, $ssl, $timeout, $opts);
 	}
 
 	public function test_connection() {
 		$smtp = $this->make_smtp();
 
-		extract(SMTPFixture::$config['host_bogus']);
+		extract(SMTPFixture::$config['bogus']);
 
 		$this->assertEquals(0,
 			$smtp->smtp_add_service($host, $port));
 		# cannot re-add existing service
-		$this->assertEquals(Err::ADD_SRV_FAILED,
-			$smtp->smtp_add_service($host, $port, true));
+		$this->assertEquals(Err::SRV_ADD_FAILED,
+			$smtp->smtp_add_service($host, $port));
 
 		$this->assertSame($smtp->smtp_list_services()[0],
-			[$host, $port]
-		);
+			[$host, $port]);
 
+		# connect to wrong port
 		$this->assertEquals(Err::SRV_NOT_FOUND,
 			$smtp->smtp_connect($host, $port + 1));
 
+		# fail opening connection
 		$this->assertEquals(Err::CONNECT_FAILED,
 			$smtp->smtp_connect($host, $port));
 
 	}
 
 	public function test_authentication() {
-		$smtp = $this->make_smtp();
 		$conf = SMTPFixture::$config;
 
-		$hbogus = $conf['host_bogus'];
-		$hvalid = $conf['host_valid'];
-		$abogus = $conf['account_bogus'];
-		$avalid = $conf['account_valid'];
+		$acc_bogus = $conf['bogus'];
+		$acc_valid = $conf['valid'];
 
-		$smtp->smtp_add_service($hbogus['host'], $hbogus['port']);
-
-		if ($hvalid['host'] === null)
+		if ($acc_valid['host'] === null)
 			return;
 
-		$smtp->smtp_add_service($hvalid['host'], $hvalid['port']);
+		$smtp = $this->make_smtp();
+
+		$smtp->smtp_add_service($acc_valid['host'], $acc_valid['port']);
 
 		$this->assertEquals(Err::NOT_CONNECTED,
 			$smtp->smtp_authenticate(
-				$abogus['username'], $abogus['password']));
+				$acc_bogus['username'], $acc_bogus['password']));
 
 		$this->assertEquals(0,
 			$smtp->smtp_connect(
-				$hvalid['host'], $hvalid['port']));
+				$acc_valid['host'], $acc_valid['port']));
 
-		# accidental reconnect
-		$smtp->smtp_connect($hvalid['host'], $hvalid['port']);
+		# connect again, will internally reconnect
+		$smtp->smtp_connect($acc_valid['host'], $acc_valid['port']);
 
 		$this->assertEquals(Err::AUTH_FAILED,
 			$smtp->smtp_authenticate(
-				$abogus['username'], $abogus['password']));
+				$acc_bogus['username'], $acc_bogus['password']));
 
-		if ($avalid['username'] === null)
+		if ($acc_valid['username'] === null)
 			return;
 
 		$this->assertEquals(0,
 			$smtp->smtp_authenticate(
-				$avalid['username'], $avalid['password']));
+				$acc_valid['username'], $acc_valid['password']));
+	}
+
+	public function test_list_service() {
+		$smtp = $this->make_smtp();
+		$core = $smtp->core;
+
+		$conf = [];
+		$i = 0;
+		while ($i < 4)
+			$this->make_service($smtp, [
+				'host' => 'localhost',
+				'port' => 3587 + $i++,
+			]);
+
+		$_SERVER['REQUEST_URI'] = '/smtp/srv';
+		$smtp->route('/smtp/srv', [$smtp, 'route_smtp_list']);
+		$this->assertEquals($core::$errno, 0);
+		$this->assertSame($core::$data[0][0], 'localhost');
+		$this->assertSame($core::$data[0][1], 3587);
+		$this->assertSame($core::$data[1][1], 3588);
 	}
 
 	public function test_route() {
-		$store = $this->make_store();
 		$conf = SMTPFixture::$config;
+		$acc_bogus = $conf['bogus'];
+		$acc_valid = $conf['valid'];
 
-		$hbogus = $conf['host_bogus'];
-		$hvalid = $conf['host_valid'];
-		$abogus = $conf['account_bogus'];
-		$avalid = $conf['account_valid'];
-
-		# list services
-
-		$_SERVER['REQUEST_URI'] = '/smtp/srv';
-		$smtp = $this->make_smtp(null, $store);
-
-		$smtp->smtp_add_service($hbogus['host'], $hbogus['port']);
-		$smtp->smtp_add_service($hbogus['host'], $hbogus['port'] + 1);
-		$smtp->smtp_add_service($hbogus['host'], $hbogus['port'] + 2);
-
-		$smtp->route('/smtp/srv', [$smtp, 'route_smtp_list']);
+		$smtp = $this->make_smtp();
 		$core = $smtp->core;
-		extract($core::$body);
-		$this->assertEquals($errno, 0);
-		$this->assertSame($data[0][0], $hbogus['host']);
-		$this->assertSame($data[2][1], $hbogus['port'] + 2);
-		$core::reset();
+		$this->make_service($smtp, $acc_bogus);
+		$this->make_service($smtp, $acc_valid);
 
 		# incomplete data
 
+		$_SERVER['REQUEST_URI'] = '/smtp/auth';
 		$_SERVER['REQUEST_METHOD'] = 'POST';
 		$_POST = [
-			'smtp_host' => $hbogus['host'],
-			'smtp_port' => $hbogus['port'],
-			'username' => $abogus['username'],
+			'smtp_host' => $acc_bogus['host'],
+			'smtp_port' => $acc_bogus['port'],
+			'username' => $acc_bogus['username'],
 		];
-		$_SERVER['REQUEST_URI'] = '/smtp/auth';
-		$smtp = $this->make_smtp(null, $store);
-		$smtp->smtp_add_service($hbogus['host'], $hbogus['port']);
 		$smtp->route('/smtp/auth', [$smtp, 'route_smtp_auth'], 'POST');
-		$core = $smtp->core;
-		extract($core::$body);
-		$this->assertEquals($errno, Err::AUTH_INCOMPLETE_DATA);
+		$this->assertEquals($core::$errno, Err::AUTH_INCOMPLETE_DATA);
+		$core->deinit()->reset();
 
 		# service down or invalid
 
-		$_POST['password'] = $abogus['password'];
-		$smtp = $this->make_smtp(null, $store);
-		$smtp->smtp_add_service($hbogus['host'], $hbogus['port']);
+		$_SERVER['REQUEST_URI'] = '/smtp/auth';
+		$_SERVER['REQUEST_METHOD'] = 'POST';
+		$_POST = [
+			'smtp_host' => $acc_bogus['host'],
+			'smtp_port' => $acc_bogus['port'],
+			'username' => $acc_bogus['username'],
+			'password' => $acc_bogus['password'],
+		];
 		$smtp->route('/smtp/auth', [$smtp, 'route_smtp_auth'], 'POST');
-		$core = $smtp->core;
-		extract($core::$body);
-		$this->assertEquals($errno, Err::CONNECT_FAILED);
-		$core::$head = [];
+		$this->assertEquals($core::$errno, Err::CONNECT_FAILED);
+		$core->deinit()->reset();
 
-		if ($hvalid['host'] == null)
+		# only run if there's a live server
+		if ($acc_valid['host'] == null)
 			return;
 
 		# wrong password
 
+		$_SERVER['REQUEST_URI'] = '/smtp/auth';
+		$_SERVER['REQUEST_METHOD'] = 'POST';
 		$_POST = [
-			'smtp_host' => $hvalid['host'],
-			'smtp_port' => $hvalid['port'],
-			'username' => $abogus['username'],
-			'password' => $abogus['password'],
+			'smtp_host' => $acc_valid['host'],
+			'smtp_port' => $acc_valid['port'],
+			'username' => $acc_bogus['username'],
+			'password' => $acc_bogus['password'],
 		];
-		$smtp = $this->make_smtp(null, $store);
-		$smtp->smtp_add_service($hvalid['host'], $hvalid['port'],
-			$hvalid['ssl']);
 		$smtp->route('/smtp/auth', [$smtp, 'route_smtp_auth'], 'POST');
-		$core = $smtp->core;
-		extract($core::$body);
-		$this->assertEquals($errno, Err::AUTH_FAILED);
-		$core::$head = [];
+		$this->assertEquals($core::$errno, Err::AUTH_FAILED);
+		$core->deinit()->reset();
 
 		# success
 
-		$_POST['username'] = $avalid['username'];
-		$_POST['password'] = $avalid['password'];
-		$smtp = $this->make_smtp(null, $store);
-		$smtp->smtp_add_service($hvalid['host'], $hvalid['port'],
-			$hvalid['ssl']);
+		$_SERVER['REQUEST_URI'] = '/smtp/auth';
+		$_SERVER['REQUEST_METHOD'] = 'POST';
+		$_POST = [
+			'smtp_host' => $acc_valid['host'],
+			'smtp_port' => $acc_valid['port'],
+			'username' => $acc_valid['username'],
+			'password' => $acc_valid['password'],
+		];
 		$smtp->route('/smtp/auth', [$smtp, 'route_smtp_auth'], 'POST');
-		$core = $smtp->core;
-		extract($core::$body);
-		$this->assertEquals($errno, 0);
+		$this->assertEquals($core::$errno, 0);
+		$data = $core::$data;
 
 		# test status
 
