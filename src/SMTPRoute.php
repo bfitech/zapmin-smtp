@@ -26,13 +26,21 @@ class SMTPRoute extends SMTPStore {
 	/**
 	 * Default authentication via SMTP.
 	 *
+	 * This should be drop-in replacement for AdminStore::adm_login.
+	 *
 	 * `POST: /smtp/auth`
 	 */
 	public function route_smtp_auth($args) {
 		$core = $this->core;
 		$post = $args['post'];
 
-		if (!Common::check_idict($post, [
+		if ($this->store_is_logged_in())
+			return $core->pj([AdminStoreError::USER_ALREADY_LOGGED_IN],
+				401);
+
+		$smtp_host = $smtp_port = $username = $password = null;
+		$common = new Common;
+		if (!$common::check_idict($post, [
 			'smtp_host', 'smtp_port', 'username', 'password'
 		]))
 			return $core::pj([SMTPRouteError::AUTH_INCOMPLETE_DATA],

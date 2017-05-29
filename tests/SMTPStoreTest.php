@@ -6,6 +6,7 @@ use BFITech\ZapCore\Logger;
 use BFITech\ZapCoreDev\RouterDev;
 use BFITech\ZapStore\SQLite3;
 use BFITech\ZapAdmin\SMTPRoute;
+use BFITech\ZapAdmin\AdminStoreError;
 use BFITech\ZapAdmin\SMTPRouteError as Err;
 
 
@@ -237,6 +238,22 @@ class SMTPRouteTest extends TestCase {
 		$smtp->adm_set_user_token($data['token']);
 		$rv = $smtp->adm_status();
 		$this->assertEquals($rv['uname'], $uname);
+		$core->deinit()->reset();
+
+		# resign-in will fail
+
+		$_SERVER['REQUEST_URI'] = '/smtp/auth';
+		$_SERVER['REQUEST_METHOD'] = 'POST';
+		$_POST = [
+			'smtp_host' => $acc_valid['host'],
+			'smtp_port' => $acc_valid['port'],
+			'username' => $acc_valid['username'],
+			'password' => $acc_valid['password'],
+		];
+		$smtp->route('/smtp/auth', [$smtp, 'route_smtp_auth'], 'POST');
+		$this->assertEquals($core::$code, 401);
+		$this->assertEquals($core::$errno,
+			AdminStoreError::USER_ALREADY_LOGGED_IN);
 	}
 
 
