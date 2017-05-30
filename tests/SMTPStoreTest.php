@@ -66,6 +66,7 @@ class SMTPRouteTest extends TestCase {
 	public function make_smtp() {
 		$store = new SQLite3(['dbname' => ':memory:'], self::$logger);
 		$core = (new RouterDev())
+			->config('home', '/')
 			->config('logger', self::$logger);
 		return new SMTPRoute($store, self::$logger, null, $core);
 	}
@@ -79,6 +80,11 @@ class SMTPRouteTest extends TestCase {
 		if (!isset($opts))
 			$opts = [];
 		$smtp->smtp_add_service($host, $port, $ssl, $timeout, $opts);
+	}
+
+	private function core_reinit($core) {
+		$core->deinit()->reset();
+		$core->config('home', '/');
 	}
 
 	public function test_connection() {
@@ -182,7 +188,7 @@ class SMTPRouteTest extends TestCase {
 		];
 		$smtp->route('/smtp/auth', [$smtp, 'route_smtp_auth'], 'POST');
 		$this->assertEquals($core::$errno, Err::AUTH_INCOMPLETE_DATA);
-		$core->deinit()->reset();
+		$this->core_reinit($core);
 
 		# service down or invalid
 
@@ -196,7 +202,7 @@ class SMTPRouteTest extends TestCase {
 		];
 		$smtp->route('/smtp/auth', [$smtp, 'route_smtp_auth'], 'POST');
 		$this->assertEquals($core::$errno, Err::CONNECT_FAILED);
-		$core->deinit()->reset();
+		$this->core_reinit($core);
 
 		# only run if there's a live server
 		if ($acc_valid['host'] == null)
@@ -214,7 +220,7 @@ class SMTPRouteTest extends TestCase {
 		];
 		$smtp->route('/smtp/auth', [$smtp, 'route_smtp_auth'], 'POST');
 		$this->assertEquals($core::$errno, Err::AUTH_FAILED);
-		$core->deinit()->reset();
+		$this->core_reinit($core);
 
 		# success
 
@@ -238,7 +244,7 @@ class SMTPRouteTest extends TestCase {
 		$smtp->adm_set_user_token($data['token']);
 		$rv = $smtp->adm_status();
 		$this->assertEquals($rv['uname'], $uname);
-		$core->deinit()->reset();
+		$this->core_reinit($core);
 
 		# resign-in will fail
 
