@@ -7,6 +7,9 @@
 *.bak
 *.sq3
 *.json
+.orig
+
+.DS_Store
 composer.lock
 
 /docs/

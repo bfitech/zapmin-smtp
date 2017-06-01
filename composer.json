@@ -10,7 +10,7 @@
     }
   ],
   "require": {
-    "bfitech/zapmin": "1.4.x-dev",
+    "bfitech/zapmin": "~1.4.0",
     "phpmailer/phpmailer": "~5.2.0"
   },
   "require-dev": {
