@@ -262,6 +262,4 @@ class SMTPRouteTest extends TestCase {
 			AdminStoreError::USER_ALREADY_LOGGED_IN);
 	}
 
-
 }
-

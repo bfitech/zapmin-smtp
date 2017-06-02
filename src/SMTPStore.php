@@ -118,8 +118,8 @@ class SMTPStore extends AdminRoute {
 		$srv = $this->smtp_services[$key];
 
 		$smtp = new \SMTP();
-		$rv = $smtp->connect($srv['host'], $srv['port'], $srv['timeout'],
-			$srv['opts']);
+		$rv = $smtp->connect($srv['host'], $srv['port'],
+			$srv['timeout'], $srv['opts']);
 		if (!$rv) {
 			$logger->warning(
 				"SMTP: open connection failed: $host:$port.");
@@ -220,6 +220,3 @@ class SMTPStore extends AdminRoute {
 	}
 
 }
-
-
-

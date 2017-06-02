@@ -64,5 +64,5 @@ class SMTPRoute extends SMTPStore {
 
 		return $core::pj($rv);
 	}
-}
 
+}
