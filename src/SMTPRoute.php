@@ -53,7 +53,7 @@ class SMTPRoute extends SMTPStore {
 		if ($rv[0] !== 0)
 			return $core::pj($rv, 403);
 
-		$expiration = $this->store->unix_epoch() +
+		$expiration = $this->store->time() +
 			$this->adm_get_byway_expiration();
 
 		# alway autologin on success
