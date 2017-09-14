@@ -47,22 +47,22 @@ class SMTPRoute extends SMTPStore {
 				403);
 		extract($post);
 
-		$rv = $this->adm_smtp_add_user($smtp_host, $smtp_port,
+		$ret = $this->adm_smtp_add_user($smtp_host, $smtp_port,
 			$username, $password);
 
-		if ($rv[0] !== 0)
-			return $core::pj($rv, 403);
+		if ($ret[0] !== 0)
+			return $core::pj($ret, 403);
 
 		$expiration = $this->store->time() +
 			$this->adm_get_byway_expiration();
 
 		# alway autologin on success
-		$token = $rv[1]['token'];
+		$token = $ret[1]['token'];
 		$this->adm_set_user_token($token);
 		$core::send_cookie($this->adm_get_token_name(), $token,
 			$expiration, '/');
 
-		return $core::pj($rv);
+		return $core::pj($ret);
 	}
 
 }

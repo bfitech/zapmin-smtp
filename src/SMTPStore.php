@@ -118,9 +118,9 @@ class SMTPStore extends AdminRoute {
 		$srv = $this->smtp_services[$key];
 
 		$smtp = new \SMTP();
-		$rv = $smtp->connect($srv['host'], $srv['port'],
+		$ret = $smtp->connect($srv['host'], $srv['port'],
 			$srv['timeout'], $srv['opts']);
-		if (!$rv) {
+		if (!$ret) {
 			$logger->warning(
 				"SMTP: open connection failed: $host:$port.");
 			return $Err::CONNECT_FAILED;
@@ -200,13 +200,13 @@ class SMTPStore extends AdminRoute {
 	public function adm_smtp_add_user(
 		$smtp_host, $smtp_port, $username, $password
 	) {
-		$rv = $this->smtp_connect($smtp_host, $smtp_port);
-		if ($rv !== 0)
-			return [$rv];
+		$ret = $this->smtp_connect($smtp_host, $smtp_port);
+		if ($ret !== 0)
+			return [$ret];
 
-		$rv = $this->smtp_authenticate($username, $password);
-		if ($rv !== 0)
-			return [$rv];
+		$ret = $this->smtp_authenticate($username, $password);
+		if ($ret !== 0)
+			return [$ret];
 
 		$username = rawurlencode($username);
 		$uservice = sprintf('smtp[%s:%s]', $smtp_host, $smtp_port);
