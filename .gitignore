@@ -11,7 +11,10 @@
 
 .DS_Store
 composer.lock
+phpcs.xml
+phpmd.xml
 
 /docs/
 /vendor/
+/test/testdata/
 
