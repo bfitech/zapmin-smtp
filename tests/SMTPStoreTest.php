@@ -3,6 +3,7 @@
 
 use PHPUnit\Framework\TestCase;
 use BFITech\ZapCore\Logger;
+use BFITech\ZapCoreDev\CoreDev;
 use BFITech\ZapCoreDev\RouterDev;
 use BFITech\ZapStore\SQLite3;
 use BFITech\ZapAdmin\SMTPRoute;
@@ -14,13 +15,15 @@ class SMTPFixture {
 
 	public static $config = null;
 
-	public static function read_config() {
+	public static function read_config($configfile=null) {
 		if (self::$config !== null)
 			return;
-		$config = __DIR__ . '/zapmin-smtp-test.json';
-		if (file_exists($config))
+		if (!$configfile)
+			$configfile = CoreDev::testdir(__FILE__) .
+				'/zapmin-smtp.json';
+		if (file_exists($configfile))
 			self::$config = json_decode(
-				file_get_contents($config), true);
+				file_get_contents($configfile), true);
 		else {
 			self::$config = [
 				'bogus' => [
@@ -42,7 +45,7 @@ class SMTPFixture {
 					'password' => null,
 				],
 			];
-			file_put_contents($config,
+			file_put_contents($configfile,
 				json_encode(self::$config, JSON_PRETTY_PRINT));
 		}
 	}
@@ -56,7 +59,8 @@ class SMTPRouteTest extends TestCase {
 	public static $core;
 
 	public static function setUpBeforeClass() {
-		$logfile = __DIR__ . '/zapmin-smtp-test.log';
+		;
+		$logfile = CoreDev::testdir(__FILE__) . '/zapmin-smtp.log';
 		if (file_exists($logfile))
 			unlink($logfile);
 		self::$logger = new Logger(Logger::DEBUG, $logfile);
