@@ -59,7 +59,6 @@ class SMTPRouteTest extends TestCase {
 	public static $core;
 
 	public static function setUpBeforeClass() {
-		;
 		$logfile = CoreDev::testdir(__FILE__) . '/zapmin-smtp.log';
 		if (file_exists($logfile))
 			unlink($logfile);
