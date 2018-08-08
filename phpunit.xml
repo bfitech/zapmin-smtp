@@ -22,7 +22,7 @@
 	timeoutForMediumTests="10"
 	timeoutForLargeTests="60"
 
-	verbose="false"
+	verbose="true"
 
 	bootstrap="./vendor/autoload.php"
 >
@@ -34,6 +34,7 @@
 	<filter>
 		<whitelist processUncoveredFilesFromWhitelist="true">
 			<directory suffix=".php">./src</directory>
+			<directory suffix=".php">./dev</directory>
 		</whitelist>
 	</filter>
 	<logging>

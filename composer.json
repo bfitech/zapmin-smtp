@@ -23,13 +23,15 @@
   },
   "autoload": {
     "psr-4": {
-      "BFITech\\ZapAdmin\\": "src"
+      "BFITech\\ZapAdmin\\": "src",
+      "BFITech\\ZapAdminDev\\": "dev"
     }
   },
   "autoload-dev": {
     "psr-4": {
       "BFITech\\ZapCommonDev\\": "vendor/bfitech/zapcore/dev",
-      "BFITech\\ZapCoreDev\\": "vendor/bfitech/zapcore/dev"
+      "BFITech\\ZapCoreDev\\": "vendor/bfitech/zapcore/dev",
+      "BFITech\\ZapAdminDev\\": "dev"
     }
   },
   "extra": {
