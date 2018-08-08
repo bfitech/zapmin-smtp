@@ -10,7 +10,8 @@
     }
   ],
   "require": {
-    "bfitech/zapmin": "~1.4.1",
+    "php": ">=5.5 <7.2",
+    "bfitech/zapmin": "~1.4.2",
     "phpmailer/phpmailer": "~5.2.0"
   },
   "require-dev": {
@@ -27,6 +28,7 @@
   },
   "autoload-dev": {
     "psr-4": {
+      "BFITech\\ZapCommonDev\\": "vendor/bfitech/zapcore/dev",
       "BFITech\\ZapCoreDev\\": "vendor/bfitech/zapcore/dev"
     }
   },
