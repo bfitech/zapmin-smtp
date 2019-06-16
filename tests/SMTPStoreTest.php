@@ -123,7 +123,13 @@ class SMTPRouteTest extends TestCase {
 
 		$smtp = $this->make_smtp();
 
-		$smtp->smtp_add_service($acc_valid['host'], $acc_valid['port']);
+		$smtp->smtp_add_service(
+			$acc_valid['host'],
+			$acc_valid['port'],
+			$acc_valid['ssl'],
+			$acc_valid['timeout'],
+			$acc_valid['opts']
+		);
 
 		$this->assertEquals(SErr::NOT_CONNECTED,
 			$smtp->smtp_authenticate(
