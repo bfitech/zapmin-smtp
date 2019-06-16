@@ -44,19 +44,22 @@ Find a bug? Help us fix it.
 5.  Make sure coding convention is met as much as possible. For
     automated check, use [code sniffer](https://github.com/squizlabs/PHP_CodeSniffer)
     and [mess detector](https://github.com/phpmd/phpmd) rulesets
-    that come with [`zapcore`](https://github.com/bfitech/zapcore)
-    repository:
+    that come with this repository:
 
     ```txt
     $ export PATH=~/.composer/vendor/bin:$PATH
     $
     $ # coding convention compliance with phpcs
-    $ wget https://raw.githubusercontent.com/bfitech/zapcore/master/phpcs.xml
     $ composer global require squizlabs/php_codesniffer
-    $ phpcs
+    $ phpcs \
+    >     --standard=./phpcs.xml \
+    >     --extensions=php \
+    >     --runtime-set ignore_warnings_on_exit 1 \
+    >     --report-width=72 \
+    >     --no-cache \
+    >     src
     $
     $ # static analysis with phpmd
-    $ wget https://raw.githubusercontent.com/bfitech/zapcore/master/phpmd.xml
     $ composer global require phpmd/phpmd
     $ phpmd ./src text ./phpmd.xml
     ```
