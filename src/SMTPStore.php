@@ -47,12 +47,14 @@ class SMTPStore extends AdminRoute {
 	/**
 	 * Add authenticaton service.
 	 *
-	 * @param string $host Service host.
+	 * @param string $host Service host. Add explicit encryption type
+	 *     prefix ssl://... etc. if necessary but WITHOUT the port.
 	 * @param int $port Service port.
 	 * @param bool $ssl Use TLS if true.
 	 * @param int $timeout Connect timeout in seconds.
 	 * @param dict $opts Socket options used by stream_context_create().
 	 * @see https://archive.fo/K6wKE
+	 * @see https://git.io/fjan7
 	 */
 	public function smtp_add_service(
 		$host, $port, $ssl=true, $timeout=4, $opts=[]
@@ -90,6 +92,31 @@ class SMTPStore extends AdminRoute {
 	}
 
 	/**
+	 * Map SMTP logging to Logger.
+	 *
+	 * @fixme Level is hardcoded. This should be derived from Logger
+	 *     properties, which we don't currently have access to.
+	 * @codeCoverageIgnore
+	 */
+	private function set_logger($smtp) {
+		$logger = $this->logger;
+		$level = $logger::ERROR;
+		switch ($level) {
+			case $logger::DEBUG:
+				$smtp->setDebugLevel(4);
+				$smtp->setDebugOutput([$logger, 'debug']);
+				break;
+			case $logger::INFO:
+				$smtp->setDebugLevel(1);
+				$smtp->setDebugOutput([$logger, 'info']);
+				break;
+			default:
+				$smtp->setDebugLevel(0);
+				break;
+		}
+	}
+
+	/**
 	 * Connect to a registered service.
 	 *
 	 * @param string $host Service host.
@@ -118,6 +145,7 @@ class SMTPStore extends AdminRoute {
 		$srv = $this->smtp_services[$key];
 
 		$smtp = new \SMTP();
+		$this->set_logger($smtp);
 		$ret = $smtp->connect($srv['host'], $srv['port'],
 			$srv['timeout'], $srv['opts']);
 		if (!$ret) {
