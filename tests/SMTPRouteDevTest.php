@@ -81,17 +81,31 @@ class SMTPRouteDevTest extends SMTPCommon {
 			->request('/auth', 'POST', ['post' => $post])
 			->route('/auth', [$router, 'route_smtp_auth'], 'POST');
 		$eq($core::$errno, 0);
+		$zuid = $core::$data['uid'];
+		$zuname = $core::$data['uname'];
 		$token = $core::$data['token'];
 
+		# get status
 		$rdev->request('/status', 'GET', [], [
-			'testing' => $token
+			'testing' => $token,
 		]);
-		### cannot chain here because $rdev->route() != $router->route()
-		### when dealing with cookies
 		$router->route('/status', [$router, 'route_fake_status']);
 		$eq(strpos(urldecode($core::$data['uname']),
 			$post['username']), 1);
 
+		# cannot relogin if already logged in
+		$rdev->request('/auth', 'POST', ['post' => $post]);
+		$router->route('/auth', [$router, 'route_smtp_auth'], 'POST');
+		$eq($core::$code, 403);
+
+		### renew fake routing
+		# @fixme Why does this need to happen?
+		list($router, $rdev, $core) = $this->make_router();
+		# relogin with the same name doesn't change zapmin identifier
+		$rdev->request('/auth', 'POST', ['post' => $post], []);
+		$router->route('/auth', [$router, 'route_smtp_auth'], 'POST');
+		$eq($zuid, $core::$data['uid']);
+		$eq($zuname, $core::$data['uname']);
 	}
 
 }

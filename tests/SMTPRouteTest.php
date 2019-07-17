@@ -82,20 +82,20 @@ class SMTPRouteTest extends SMTPCommon {
 		$data = $core::$data;
 		$token = $data['token'];
 
-		# test status
-		#$uname = sprintf('+%s:smtp[%s:%s]',
-		#	rawurlencode($post['username']),
-		#	$post['host'], $post['port']);
-		#$smtp->set_user_token($data['token']);
-		#$rv = $smtp->adm_status();
-		#$this->assertEquals($rv['uname'], $uname);
-
 		# relogin will fail
 		$rdev
 			->request('/smtp/auth', 'POST', ['post' => $post])
 			->route('/smtp/auth', [$router, 'route_smtp_auth'], 'POST');
-		$this->assertEquals($core::$code, 401);
+		$this->assertEquals($core::$code, 403);
+
+		# login afresh
+		list($router, $rdev, $core) = $this->make_router();
+		$rdev
+			->request('/smtp/auth', 'POST', ['post' => $post])
+			->route('/smtp/auth', [$router, 'route_smtp_auth'], 'POST');
+		$eq($data['uid'], $core::$data['uid']);
+		$eq($data['uname'], $core::$data['uname']);
+		$ne($data['token'], $core::$data['token']);
 	}
 
 }
-

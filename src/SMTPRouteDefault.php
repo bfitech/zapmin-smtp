@@ -32,7 +32,7 @@ class SMTPRouteDefault extends Route {
 	 * @endcond
 	 */
 	public function route_smtp_list() {
-		self::$core->pj([0, self::$manage->list_services()]);
+		self::$core::pj([0, self::$manage->list_services()]);
 	}
 
 	/**
@@ -55,12 +55,7 @@ class SMTPRouteDefault extends Route {
 	 * @apiSuccess {Object} data User data.
 	 * @apiSuccess {Int} data.uid User ID.
 	 * @apiSuccess {String} data.uname Zapmin user identifier.
-	 * @apiSuccess {String} data.email=null Email address.
-	 * @apiSuccess {Int} data.email_verified=0 Whether email
-	 *     address is verified.
-	 * @apiSuccess {String} data.fname=null Full name.
-	 * @apiSuccess {String} data.site=null User website.
-	 * @apiSuccess {Date} data.since Registration date.
+	 * @apiSuccess {String} data.token Session token.
 	 * @apiError (401) {Int=1} errno User already signed in.
 	 * @apiError (403) {Int=SMTPError::*} errno Specific error number.
 	 *     See code documentation.
@@ -71,8 +66,6 @@ class SMTPRouteDefault extends Route {
 		$post = $args['post'];
 
 		$manage = self::$manage;
-		if ($manage->is_logged_in())
-			return $core->pj([1], 401);
 
 		$host = $port = $username = $password = null;
 		if (!Common::check_idict($post, [
