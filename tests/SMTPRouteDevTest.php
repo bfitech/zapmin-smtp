@@ -1,86 +1,95 @@
 <?php
 
+require_once(__DIR__ . '/SMTPCommon.php');
 
-use PHPUnit\Framework\TestCase;
-use BFITech\ZapCore\Logger;
-use BFITech\ZapCommonDev\CommonDev;
+
 use BFITech\ZapCoreDev\RouterDev;
 use BFITech\ZapCoreDev\RoutingDev;
 use BFITech\ZapStore\SQLite3;
+use BFITech\ZapAdmin\AuthCtrl;
 use BFITech\ZapAdminDev\SMTPRouteDev;
-use BFITech\ZapAdmin\AdminStoreError as AErr;
-use BFITech\ZapAdmin\SMTPRouteError as SErr;
+use BFITech\ZapAdmin\SMTPError;
 
 
-class SMTPRouteDevTest extends TestCase {
+class SMTPRouteDevTest extends SMTPCommon {
 
-	public static $logger;
-
-	public static function setUpBeforeClass() {
-		$logfile = CommonDev::testdir(__FILE__) . '/zapmin-smtp-dev.log';
-		if (file_exists($logfile))
-			unlink($logfile);
-		self::$logger = new Logger(Logger::DEBUG, $logfile);
-	}
-
-	private function make_smtp() {
-		$store = new SQLite3(['dbname' => ':memory:'], self::$logger);
+	public function make_router() {
+		$manage = $this->make_smtp();
+		$log = $manage::$logger;
 		$core = (new RouterDev())
 			->config('home', '/')
-			->config('logger', self::$logger);
-		return new SMTPRouteDev($store, self::$logger, null, $core);
+			->config('shutdown', false)
+			->config('logger', $log);
+		$rdev = new RoutingDev($core);
+		$ctrl = new AuthCtrl($manage::$admin, $log);
+		$router = new SMTPRouteDev($core, $ctrl, $manage);
+		return [$router, $rdev, $core];
 	}
 
 	public function test_smtp_dev() {
-		$smtp = $this->make_smtp();
-		$smtp->smtp_add_service('example.xyz', 587);
-		$smtp->adm_set_token_name('testing');
+		extract(self::vars());
 
-		$core = $smtp->core;
-		$rdev = new RoutingDev($core);
+		list($router, $rdev, $core) = $this->make_router();
+		$bogus = self::get_account('bogus');
 
+		# ZAPMIN_SMTP_DEV not defined
 		$post = [
-			'smtp_host' => 'localhost',
-			'smtp_port' => 587,
+			'host' => $bogus['host'],
+			'port' => $bogus['port'],
 		];
-		$rdev->request('/auth', 'POST', ['post' => $post]);
-		$smtp->route('/auth', [$smtp, 'route_smtp_auth'], 'POST');
-		$this->assertEquals($core::$errno, SErr::AUTH_INCOMPLETE_DATA);
-
-		$post['username'] = 'john';
-		$post['password'] = 'lalala';
-		$rdev->request('/auth', 'POST', ['post' => $post]);
-		$smtp->route('/auth', [$smtp, 'route_smtp_auth'], 'POST');
-		$this->assertEquals($core::$errno, SErr::CONNECT_FAILED);
+		$rdev
+			->request('/auth', 'POST', ['post' => $post])
+			->route('/auth', [$router, 'route_smtp_auth'], 'POST');
+		$eq($core::$errno, 1);
+		$eq($core::$code, 401);
 
 		if (!defined('ZAPMIN_SMTP_DEV'))
 			define('ZAPMIN_SMTP_DEV', true);
+
+		# no username or password
+		$rdev
+			->request('/auth', 'POST', ['post' => $post])
+			->route('/auth', [$router, 'route_smtp_auth'], 'POST');
+		$eq($core::$errno, SMTPError::AUTH_INCOMPLETE_DATA);
+
+		# host not recognized
+		$post['host'] = 'x' . $bogus['host'];
 		$post['username'] = 'john';
 		$post['password'] = 'lalala';
-		$rdev->request('/auth', 'POST', ['post' => $post]);
-		$smtp->route('/auth', [$smtp, 'route_smtp_auth'], 'POST');
-		$this->assertEquals($core::$errno, SErr::SRV_NOT_FOUND);
+		$rdev
+			->request('/auth', 'POST', ['post' => $post])
+			->route('/auth', [$router, 'route_smtp_auth'], 'POST');
+		$eq($core::$errno, SMTPError::SRV_NOT_FOUND);
 
-		$post['smtp_host'] = 'example.xyz';
-		$rdev->request('/auth', 'POST', ['post' => $post]);
-		$smtp->route('/auth', [$smtp, 'route_smtp_auth'], 'POST');
-		$this->assertEquals($core::$errno, SErr::AUTH_FAILED);
+		# bad username
+		$post['host'] = $bogus['host'];
+		$rdev
+			->request('/auth', 'POST', ['post' => $post])
+			->route('/auth', [$router, 'route_smtp_auth'], 'POST');
+		$eq($core::$errno, SMTPError::AUTH_FAILED);
 
-		$post['username'] = 'john@example.xyz';
-		$rdev->request('/auth', 'POST', ['post' => $post]);
-		$smtp->route('/auth', [$smtp, 'route_smtp_auth'], 'POST');
-		$this->assertEquals($core::$errno, SErr::AUTH_FAILED);
+		# bad password
+		$post['username'] = 'john@' . $bogus['host'];
+		$rdev
+			->request('/auth', 'POST', ['post' => $post])
+			->route('/auth', [$router, 'route_smtp_auth'], 'POST');
+		$eq($core::$errno, SMTPError::AUTH_FAILED);
 
+		# success
 		$post['password'] = md5($post['username']);
-		$rdev->request('/auth', 'POST', ['post' => $post]);
-		$smtp->route('/auth', [$smtp, 'route_smtp_auth'], 'POST');
-		$this->assertEquals($core::$errno, 0);
+		$rdev
+			->request('/auth', 'POST', ['post' => $post])
+			->route('/auth', [$router, 'route_smtp_auth'], 'POST');
+		$eq($core::$errno, 0);
+		$token = $core::$data['token'];
 
 		$rdev->request('/status', 'GET', [], [
-			['testing' => $_COOKIE['testing']]
+			'testing' => $token
 		]);
-		$smtp->route('/status', [$smtp, 'route_fake_status']);
-		$this->assertEquals(strpos(urldecode($core::$data['uname']),
+		### cannot chain here because $rdev->route() != $router->route()
+		### when dealing with cookies
+		$router->route('/status', [$router, 'route_fake_status']);
+		$eq(strpos(urldecode($core::$data['uname']),
 			$post['username']), 1);
 
 	}

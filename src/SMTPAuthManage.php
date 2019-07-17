@@ -10,11 +10,7 @@ use BFITech\ZapCore\Common;
 /**
  * Error class.
  */
-class SMTPRouteError extends \Exception {
-
-	/** Adding service failed. */
-	const SRV_ADD_FAILED = 0x01;
-
+class SMTPError extends \Exception {
 	/** Service not found. */
 	const SRV_NOT_FOUND = 0x0201;
 	/** Connection failed. */
@@ -31,18 +27,17 @@ class SMTPRouteError extends \Exception {
 
 	/** Incomplete authentication data. */
 	const AUTH_INCOMPLETE_DATA = 0x0401;
-
 }
 
 
 /**
  * SMTPStore class.
  */
-class SMTPStore extends AdminRoute {
+class SMTPAuthManage extends AuthManage {
 
-	private $smtp_connection;
-	private $smtp_service;
-	private $smtp_services = [];
+	private $connection;
+	private $service;
+	private $services = [];
 
 	/**
 	 * Add authenticaton service.
@@ -56,26 +51,19 @@ class SMTPStore extends AdminRoute {
 	 * @see https://archive.fo/K6wKE
 	 * @see https://git.io/fjan7
 	 */
-	public function smtp_add_service(
-		$host, $port, $ssl=true, $timeout=4, $opts=[]
+	public function add_service(
+		string $host, int $port,
+		bool $ssl=true, int $timeout=4, array $opts=[]
 	) {
 		$key = $host . '-' . $port;
-		if (isset($this->smtp_services[$key])) {
-			$this->logger->warning(sprintf(
-				"SMTP: add service failed: '%s:%s' already added.",
-				$host, $port));
-			return SMTPRouteError::SRV_ADD_FAILED;
-		}
-		$this->smtp_services[$key] = [
+		$this->services[$key] = [
 			'host' => $host,
 			'port' => $port,
-			'ssl' => (bool)$ssl,
-			'timeout' => (int)$timeout,
-			'opts' => (array)$opts,
+			'ssl' => $ssl,
+			'timeout' => $timeout,
+			'opts' => $opts,
 		];
-		$this->logger->info(sprintf(
-			"SMTP: add service ok: '%s:%s'.", $host, $port));
-		return 0;
+		self::$logger->debug("SMTP: add service ok: '$host:$port'.");
 	}
 
 	/**
@@ -85,10 +73,10 @@ class SMTPStore extends AdminRoute {
 	 * a client to pick a desired service to authenticate against
 	 * via SMTPStore::smtp_connect.
 	 */
-	public function smtp_list_services() {
+	public function list_services() {
 		return array_values(array_map(function($ele){
 			return [$ele['host'], $ele['port']];
-		}, $this->smtp_services));
+		}, $this->services));
 	}
 
 	/**
@@ -99,16 +87,16 @@ class SMTPStore extends AdminRoute {
 	 * @codeCoverageIgnore
 	 */
 	private function set_logger($smtp) {
-		$logger = $this->logger;
-		$level = $logger::ERROR;
+		$log = self::$logger;
+		$level = $log::ERROR;
 		switch ($level) {
-			case $logger::DEBUG:
+			case $log::DEBUG:
 				$smtp->setDebugLevel(4);
-				$smtp->setDebugOutput([$logger, 'debug']);
+				$smtp->setDebugOutput([$log, 'debug']);
 				break;
-			case $logger::INFO:
+			case $log::INFO:
 				$smtp->setDebugLevel(1);
-				$smtp->setDebugOutput([$logger, 'info']);
+				$smtp->setDebugOutput([$log, 'info']);
 				break;
 			default:
 				$smtp->setDebugLevel(0);
@@ -122,48 +110,47 @@ class SMTPStore extends AdminRoute {
 	 * @param string $host Service host.
 	 * @param int $port Service port.
 	 */
-	public function smtp_connect($host, $port) {
-		$Err = new SMTPRouteError;
-		$logger = $this->logger;
+	public function connect(string $host, int $port) {
+		$log = self::$logger;
 		$key = $host . '-' . $port;
 
-		if ($this->smtp_connection) {
-			$srv = $this->smtp_services[$key];
-			$logger->info(sprintf(
-				"SMTP: close existing connection: %s:%s.",
-				$srv['host'], $srv['port']));
-			$this->smtp_connection->close();
+		if ($this->connection) {
+			$srv = $this->services[$key];
+			$log->info(
+				"SMTP: closing existing connection '$host:$port'.");
+			$this->connection->close();
 		}
 
-		$this->smtp_connection = null;
-		$this->smtp_service = null;
+		$this->connection = null;
+		$this->service = null;
 
-		if (!isset($this->smtp_services[$key])) {
-			$logger->warning("SMTP: service not found: '$host:$port'.");
-			return $Err::SRV_NOT_FOUND;
+		if (!isset($this->services[$key])) {
+			$log->warning("SMTP: service not found: '$host:$port'.");
+			return SMTPError::SRV_NOT_FOUND;
 		}
-		$srv = $this->smtp_services[$key];
+		$srv = $this->services[$key];
+
+		$timout = $opts = $ssl = null;
+		extract($srv);
 
 		$smtp = new \SMTP();
 		$this->set_logger($smtp);
-		$ret = $smtp->connect($srv['host'], $srv['port'],
-			$srv['timeout'], $srv['opts']);
+		$ret = $smtp->connect($host, $port, $timeout, $opts);
 		if (!$ret) {
-			$logger->warning(
-				"SMTP: open connection failed: $host:$port.");
-			return $Err::CONNECT_FAILED;
+			$log->warning("SMTP: connection failed: '$host:$port'.");
+			return SMTPError::CONNECT_FAILED;
 		}
 
 		// @codeCoverageIgnoreStart
-		if ($srv['ssl'] && !$smtp->startTLS()) {
-			$logger->warning(
-				"SMTP: open TLS connection failed: $host:$port.");
-			return $Err::CONNECT_TLS_FAILED;
+		if ($ssl && !$smtp->startTLS()) {
+			$log->warning(
+				"SMTP: TLS connection failed: '$host:$port'.");
+			return SMTPError::CONNECT_TLS_FAILED;
 		}
 		// @codeCoverageIgnoreEnd
 
-		$this->smtp_connection = $smtp;
-		$this->smtp_service = $srv;
+		$this->connection = $smtp;
+		$this->service = $srv;
 
 		return 0;
 	}
@@ -184,24 +171,23 @@ class SMTPStore extends AdminRoute {
 	 * @param string $workstation The auth workstation for NTLM
 	 * @param null|OAuth $OAuth An optional OAuth instance.
 	 */
-	public function smtp_authenticate(
-		$username, $password, $authtype=null, $realm='',
-		$workstation='', $OAuth=null
+	public function authenticate(
+		string $username, string $password, string $authtype=null,
+		string $realm='', string $workstation='', $OAuth=null
 	) {
-		$Err = new SMTPRouteError;
-		$logger = $this->logger;
+		$log = self::$logger;
 
-		if (!$this->smtp_connection) {
-			$logger->warning("SMTP: no connection opened.");
-			return $Err::NOT_CONNECTED;
+		if (!$this->connection) {
+			$log->warning("SMTP: no connection opened.");
+			return SMTPError::NOT_CONNECTED;
 		}
-		$smtp = $this->smtp_connection;
+		$smtp = $this->connection;
 
 		# get EHLO and acquire AUTH announcement
-		if (!$smtp->hello($this->smtp_service['host'])) {
+		if (!$smtp->hello($this->service['host'])) {
 			// @codeCoverageIgnoreStart
-			$logger->warning("SMTP: cannot send HELO/EHLO.");
-			return $Err::HELO_FAILED;
+			$log->warning("SMTP: cannot send HELO/EHLO.");
+			return SMTPError::HELO_FAILED;
 			// @codeCoverageIgnoreEnd
 		}
 
@@ -209,9 +195,8 @@ class SMTPStore extends AdminRoute {
 		$authed = $smtp->authenticate($username, $password, $authtype,
 			$realm, $workstation, $OAuth);
 		if (!$authed) {
-			$logger->info(
-				"SMTP: auth failed for '$username'.");
-			return $Err::AUTH_FAILED;
+			$log->info("SMTP: auth failed for '$username'.");
+			return SMTPError::AUTH_FAILED;
 		}
 
 		return 0;
@@ -221,30 +206,30 @@ class SMTPStore extends AdminRoute {
 	 * Process authentication.
 	 *
 	 * @param string $smtp_host Service host.
-	 * @param port $smtp_port Service port.
+	 * @param int $smtp_port Service port.
 	 * @param string $username Service username.
 	 * @param string $password Service password.
 	 */
-	public function adm_smtp_add_user(
-		$smtp_host, $smtp_port, $username, $password
+	public function add_user(
+		string $host, int $port, string $username, string $password
 	) {
-		$ret = $this->smtp_connect($smtp_host, $smtp_port);
+		$ret = $this->connect($host, $port);
 		if ($ret !== 0)
 			return [$ret];
 
-		$ret = $this->smtp_authenticate($username, $password);
+		$ret = $this->authenticate($username, $password);
 		if ($ret !== 0)
 			return [$ret];
 
 		$username = rawurlencode($username);
-		$uservice = sprintf('smtp[%s:%s]', $smtp_host, $smtp_port);
+		$uservice = sprintf('smtp[%s:%s]', $host, $port);
 
-		$args['service'] = [
+		$args = [
 			'uname' => $username,
 			'uservice' => $uservice,
 		];
 
-		return $this->adm_self_add_user_passwordless($args);
+		return $this->self_add_passwordless($args);
 	}
 
 }
