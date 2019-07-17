@@ -17,7 +17,19 @@ class SMTPRouteDefault extends Route {
 	/**
 	 * List available SMTP authentication services.
 	 *
-	 * `GET: /smtp/services`
+	 * @see apidoc
+	 *
+	 * @api {get} /smtp/list SMTPServiceList
+	 * @apiDescription
+	 *     Get list of registered services.
+	 *
+	 * @cond
+	 * @apiName SMTPServiceList
+	 * @apiGroup SMTP
+	 * @apiSuccess {Int=0} errno Success.
+	 * @apiSuccess {List[]} data Service list, each containing
+	 *     a tuple of host and port.
+	 * @endcond
 	 */
 	public function route_smtp_list() {
 		self::$core->pj([0, self::$manage->list_services()]);
@@ -26,7 +38,33 @@ class SMTPRouteDefault extends Route {
 	/**
 	 * Default authentication via SMTP.
 	 *
-	 * `POST: /smtp/login`
+	 * @see apidoc
+	 *
+	 * @api {post} /smtp/auth SMTPAuth
+	 * @apiDescription
+	 *     Authenticate a user.
+	 *
+	 * @cond
+	 * @apiName SMTPAuth
+	 * @apiGroup SMTP
+	 * @apiParam (POST) {String} host SMTP host.
+	 * @apiParam (POST) {Int} port SMTP port.
+	 * @apiParam (POST) {String} username Username.
+	 * @apiParam (POST) {String} password Password.
+	 * @apiSuccess {Int=0} errno Success.
+	 * @apiSuccess {Object} data User data.
+	 * @apiSuccess {Int} data.uid User ID.
+	 * @apiSuccess {String} data.uname Zapmin user identifier.
+	 * @apiSuccess {String} data.email=null Email address.
+	 * @apiSuccess {Int} data.email_verified=0 Whether email
+	 *     address is verified.
+	 * @apiSuccess {String} data.fname=null Full name.
+	 * @apiSuccess {String} data.site=null User website.
+	 * @apiSuccess {Date} data.since Registration date.
+	 * @apiError (401) {Int=1} errno User already signed in.
+	 * @apiError (403) {Int=SMTPError::*} errno Specific error number.
+	 *     See code documentation.
+	 * @endcond
 	 */
 	public function route_smtp_auth(array $args) {
 		$core = self::$core;

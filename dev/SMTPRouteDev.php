@@ -21,10 +21,33 @@ class SMTPRouteDev extends SMTPRouteDefault {
 	 * is simply MD5 of the username. `ZAPMIN_SMTP_DEV` must be
 	 * defined.
 	 *
-	 * @param string $host Service host.
-	 * @param port $port Service port.
-	 * @param string $username Service username.
-	 * @param string $password Service password.
+	 * @see apidoc
+	 *
+	 * @api {post} /smtp/fake-auth SMTPAuthFake
+	 * @apiDescription
+	 *     Authenticate a fake user. For development only.
+	 *
+	 * @cond
+	 * @apiName SMTPAuthFake
+	 * @apiGroup SMTP
+	 * @apiParam (POST) {String} host SMTP host.
+	 * @apiParam (POST) {Int} port SMTP port.
+	 * @apiParam (POST) {String} username Username.
+	 * @apiParam (POST) {String} password Password.
+	 * @apiSuccess {Int=0} errno Success.
+	 * @apiSuccess {Object} data User data.
+	 * @apiSuccess {Int} data.uid User ID.
+	 * @apiSuccess {String} data.uname Zapmin user identifier.
+	 * @apiSuccess {String} data.email=null Email address.
+	 * @apiSuccess {Int} data.email_verified=0 Whether email
+	 *     address is verified.
+	 * @apiSuccess {String} data.fname=null Full name.
+	 * @apiSuccess {String} data.site=null User website.
+	 * @apiSuccess {Date} data.since Registration date.
+	 * @apiError (401) {Int=1} errno User already signed in.
+	 * @apiError (403) {Int=SMTPError::*} errno Specific error number.
+	 *     See code documentation.
+	 * @endcond
 	 */
 	public function route_smtp_auth(array $args) {
 
@@ -85,6 +108,32 @@ class SMTPRouteDev extends SMTPRouteDefault {
 
 	/**
 	 * Fake status.
+	 *
+	 * This is identical to non-fake
+	 * BFITech\\ZapAdmin\\RouteDefault::route_status. Included for
+	 * completeness sake.
+	 *
+	 * @see apidoc
+	 *
+	 * @api {get} /smtp/fake-status SMTPStatusFake
+	 * @apiDescription
+	 *     Get user status. For development only.
+	 *
+	 * @cond
+	 * @apiName SMTPStatusFake
+	 * @apiGroup SMTP
+	 * @apiSuccess {Int=0} errno Success.
+	 * @apiSuccess {Object} data User data.
+	 * @apiSuccess {Int} data.uid User ID.
+	 * @apiSuccess {String} data.uname Zapmin user identifier.
+	 * @apiSuccess {String} data.email=null Email address.
+	 * @apiSuccess {Int} data.email_verified=0 Whether email
+	 *     address is verified.
+	 * @apiSuccess {String} data.fname=null Full name.
+	 * @apiSuccess {String} data.site=null User website.
+	 * @apiSuccess {Date} data.since Registration date.
+	 * @apiError (401) {Int=1} errno User not signed in.
+	 * @endcond
 	 */
 	public function route_fake_status() {
 		return self::$core->pj(self::$ctrl->get_safe_user_data());

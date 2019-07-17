@@ -105,7 +105,9 @@ WARN_LOGFILE           =
 #---------------------------------------------------------------------------
 INPUT                  = src \
                          dev \
-                         vendor/bfitech
+                         vendor/bfitech/zapmin/src/Route.php \
+                         vendor/bfitech/zapmin/src/Auth.php \
+                         vendor/bfitech/zapmin/src/AuthManage.php
 INPUT_ENCODING         = UTF-8
 FILE_PATTERNS          = *.php
 RECURSIVE              = YES

@@ -49,6 +49,7 @@ class SMTPAuthManage extends AuthManage {
 	 * @param bool $ssl Use TLS if true.
 	 * @param int $timeout Connect timeout in seconds.
 	 * @param dict $opts Socket options used by stream_context_create().
+     *
 	 * @see https://archive.fo/K6wKE
 	 * @see https://git.io/fjan7
 	 */
@@ -162,14 +163,14 @@ class SMTPAuthManage extends AuthManage {
 	 * Parameters are exactly the same with that in
 	 * PHPMailer::authenticate, although $realm and beyond are
 	 * not used. Use this only after successful connection made by
-	 * SMTPStore::smtp_connect.
+	 * SMTPAuthManage::connect.
 	 *
-	 * @param string $username The user name
-	 * @param string $password The password
-	 * @param string $authtype The auth type (PLAIN, LOGIN, NTLM,
-	 *     CRAM-MD5, XOAUTH2)
-	 * @param string $realm The auth realm for NTLM
-	 * @param string $workstation The auth workstation for NTLM
+	 * @param string $username Username.
+	 * @param string $password Password.
+	 * @param string $authtype Auth type (PLAIN, LOGIN, NTLM,
+	 *     CRAM-MD5, XOAUTH2).
+	 * @param string $realm The auth realm for NTLM.
+	 * @param string $workstation The auth workstation for NTLM.
 	 * @param null|OAuth $OAuth An optional OAuth instance.
 	 */
 	public function authenticate(
@@ -204,12 +205,14 @@ class SMTPAuthManage extends AuthManage {
 	}
 
 	/**
-	 * Process authentication.
-	 *
-	 * @param string $smtp_host Service host.
-	 * @param int $smtp_port Service port.
-	 * @param string $username Service username.
-	 * @param string $password Service password.
+     * Add user.
+     *
+	 * @param string $host Host.
+	 * @param int $port Port.
+	 * @param string $username Username.
+	 * @param string $password Password.
+     * @return array Return value of
+     *     SMTPAuthManage::self_add_passwordless.
 	 */
 	public function add_user(
 		string $host, int $port, string $username, string $password
@@ -224,13 +227,10 @@ class SMTPAuthManage extends AuthManage {
 
 		$username = rawurlencode($username);
 		$uservice = sprintf('smtp[%s:%s]', $host, $port);
-
-		$args = [
+        return $this->self_add_passwordless([
 			'uname' => $username,
 			'uservice' => $uservice,
-		];
-
-		return $this->self_add_passwordless($args);
+        ]);
 	}
 
 }
