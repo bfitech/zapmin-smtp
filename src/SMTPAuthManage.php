@@ -49,7 +49,7 @@ class SMTPAuthManage extends AuthManage {
 	 * @param bool $ssl Use TLS if true.
 	 * @param int $timeout Connect timeout in seconds.
 	 * @param dict $opts Socket options used by stream_context_create().
-     *
+	 *
 	 * @see https://archive.fo/K6wKE
 	 * @see https://git.io/fjan7
 	 */
@@ -205,14 +205,14 @@ class SMTPAuthManage extends AuthManage {
 	}
 
 	/**
-     * Add user.
-     *
+	 * Add user.
+	 *
 	 * @param string $host Host.
 	 * @param int $port Port.
 	 * @param string $username Username.
 	 * @param string $password Password.
-     * @return array Return value of
-     *     SMTPAuthManage::self_add_passwordless.
+	 * @return array Return value of
+	 *     SMTPAuthManage::self_add_passwordless.
 	 */
 	public function add_user(
 		string $host, int $port, string $username, string $password
@@ -227,10 +227,10 @@ class SMTPAuthManage extends AuthManage {
 
 		$username = rawurlencode($username);
 		$uservice = sprintf('smtp[%s:%s]', $host, $port);
-        return $this->self_add_passwordless([
+		return $this->self_add_passwordless([
 			'uname' => $username,
 			'uservice' => $uservice,
-        ]);
+		]);
 	}
 
 }
