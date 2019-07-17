@@ -4,6 +4,7 @@
 namespace BFITech\ZapAdmin;
 
 
+use PHPMailer\PHPMailer\SMTP;
 use BFITech\ZapCore\Common;
 
 
@@ -130,10 +131,10 @@ class SMTPAuthManage extends AuthManage {
 		}
 		$srv = $this->services[$key];
 
-		$timout = $opts = $ssl = null;
+		$timeout = $opts = $ssl = null;
 		extract($srv);
 
-		$smtp = new \SMTP();
+		$smtp = new SMTP();
 		$this->set_logger($smtp);
 		$ret = $smtp->connect($host, $port, $timeout, $opts);
 		if (!$ret) {
