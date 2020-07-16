@@ -1,8 +1,13 @@
 <?php
 
+
 require_once(__DIR__ . '/SMTPCommon.php');
 
 
+use BFITech\ZapCore\Logger;
+use BFITech\ZapStore\SQLite3;
+use BFITech\ZapAdmin\Admin;
+use BFITech\ZapAdmin\SMTPAuthManage;
 use BFITech\ZapAdmin\SMTPError;
 
 
@@ -65,4 +70,37 @@ class SMTPAuthManageTest extends SMTPCommon {
 		$eq(0, $smtp->authenticate(
 			$valid['username'], $valid['password']));
 	}
+
+	public function test_logging_map() {
+		$acc = self::get_account('bogus');
+		$host = $acc['host'];
+		$port = $acc['port'];
+
+		$make_man = function($level) use($host, $port) {
+			$logfile = self::tdir(__FILE__) . "/zapmin-$level.log";
+			$ilvl = constant('\BFITech\ZapCore\Logger::' . $level);
+			$log = new Logger($ilvl, $logfile);
+			$sql = new SQLite3(['dbname' => ':memory:'], $log);
+			$admin = new Admin($sql, $log);
+			$manage = new SMTPAuthManage($admin, $log);
+			$manage->add_service($host, $port);
+			$errno = $manage->connect($host, $port);
+			return [$logfile, $errno];
+		};
+
+		$test_man = function($level) use($make_man) {
+			extract(self::vars());
+
+			list($logfile, $errno) = $make_man($level);
+			$eq($errno, SMTPError::CONNECT_FAILED);
+			$content = file_get_contents($logfile);
+			$tr(strpos($content, 'connection failed') !== false);
+			unlink($logfile);
+		};
+
+		$test_man('DEBUG');
+		$test_man('INFO');
+		$test_man('WARNING');
+	}
+
 }

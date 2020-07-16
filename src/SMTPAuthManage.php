@@ -83,15 +83,10 @@ class SMTPAuthManage extends AuthManage {
 
 	/**
 	 * Map SMTP logging to Logger.
-	 *
-	 * @fixme Level is hardcoded. This should be derived from Logger
-	 *     properties, which we don't currently have access to.
-	 * @codeCoverageIgnore
 	 */
 	private function set_logger($smtp) {
 		$log = self::$logger;
-		$level = $log::ERROR;
-		switch ($level) {
+		switch ($log->get_logger_resource()[0]) {
 			case $log::DEBUG:
 				$smtp->setDebugLevel(4);
 				$smtp->setDebugOutput([$log, 'debug']);
@@ -194,8 +189,10 @@ class SMTPAuthManage extends AuthManage {
 		}
 
 		# authenticate
-		$authed = $smtp->authenticate($username, $password, $authtype,
-			$realm, $workstation, $OAuth);
+		$authed = $smtp->authenticate(
+			$username, $password, $authtype,
+			$realm, $workstation, $OAuth
+		);
 		if (!$authed) {
 			$log->info("SMTP: auth failed for '$username'.");
 			return SMTPError::AUTH_FAILED;
