@@ -28,7 +28,7 @@ class SMTPAuthManage extends AuthManage {
 	 * @param dict $opts Socket options used by stream_context_create().
 	 *
 	 * @see https://archive.fo/K6wKE
-	 * @see https://git.io/fjan7
+	 * @see https://git.io/JJGyA
 	 */
 	public function add_service(
 		string $host, int $port,
@@ -51,6 +51,8 @@ class SMTPAuthManage extends AuthManage {
 	 * This strips keys except host and port, which is enough for
 	 * a client to pick a desired service to authenticate against
 	 * via SMTPStore::smtp_connect.
+	 *
+	 * @return array List of registered services.
 	 */
 	public function list_services() {
 		return array_values(array_map(function($ele){
@@ -83,6 +85,7 @@ class SMTPAuthManage extends AuthManage {
 	 *
 	 * @param string $host Service host.
 	 * @param int $port Service port.
+	 * @return int 0 on sucess, `SMTPError::*` on failure.
 	 */
 	public function connect(string $host, int $port) {
 		$log = self::$logger;
@@ -144,6 +147,7 @@ class SMTPAuthManage extends AuthManage {
 	 * @param string $realm The auth realm for NTLM.
 	 * @param string $workstation The auth workstation for NTLM.
 	 * @param null|OAuth $OAuth An optional OAuth instance.
+	 * @return int 0 on success, `SMTPError::*` on failure.
 	 */
 	public function authenticate(
 		string $username, string $password, string $authtype=null,
@@ -185,8 +189,7 @@ class SMTPAuthManage extends AuthManage {
 	 * @param int $port Port.
 	 * @param string $username Username.
 	 * @param string $password Password.
-	 * @return array Return value of
-	 *     SMTPAuthManage::self_add_passwordless.
+	 * @return array Return value of AuthManage::self_add_passwordless.
 	 */
 	public function add_user(
 		string $host, int $port, string $username, string $password
