@@ -19,16 +19,18 @@
   },
   "suggest": {
     "bfitech/zapstore-mysql": "Use MySQL as database backend.",
-    "bfitech/zapstore-pgsql": "Use PostgreSQL as database backend."
+    "bfitech/zapstore-pgsql": "Use PostgreSQL as database backend.",
+    "bfitech/zapstore-redis": "Use Redis as additional backend.",
+    "bfitech/zapstore-predis": "Use Predis as additional backend."
   },
   "autoload": {
     "psr-4": {
-      "BFITech\\ZapAdmin\\": "src",
-      "BFITech\\ZapAdminDev\\": "dev"
+      "BFITech\\ZapAdmin\\": "src"
     }
   },
   "autoload-dev": {
     "psr-4": {
+      "BFITech\\ZapAdminDev\\": "dev",
       "BFITech\\ZapCoreDev\\": "vendor/bfitech/zapcore/dev"
     }
   },
