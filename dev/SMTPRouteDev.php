@@ -54,9 +54,14 @@ class SMTPRouteDev extends SMTPRouteDefault {
 		if (!defined('ZAPMIN_SMTP_DEV'))
 			return $core::pj([1], 401);
 
-		if ($manage->is_logged_in())
+		if ($manage->is_logged_in()) {
 			# already signed in
+			$log->info(sprintf(
+				"SMTP: Auth already signed in: '%s'.",
+				$manage->get_user_data()['token']
+			));
 			return $core::pj([Error::USER_ALREADY_LOGGED_IN], 401);
+		}
 
 		$post = $args['post'];
 		$host = $port = $username = $password = null;
@@ -102,7 +107,7 @@ class SMTPRouteDev extends SMTPRouteDefault {
 			'samesite' => 'Lax',
 		]);
 		$log->debug(sprintf(
-			"ZapSMTP: Set cookie: [%s -> %s].",
+			"SMTP: Set cookie: [%s -> %s].",
 			$token_name, $token_value));
 
 		return $core::pj($ret);

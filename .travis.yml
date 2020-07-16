@@ -11,9 +11,6 @@ before_script:
 script:
     - php ./vendor/bin/phpunit -c phpunit.xml
 
-after_success:
-    - curl -s https://codecov.io/bash | bash
-
 notifications:
     email:
         on_success: never

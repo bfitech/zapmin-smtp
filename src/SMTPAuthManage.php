@@ -9,7 +9,7 @@ use BFITech\ZapCore\Common;
 
 
 /**
- * SMTPStore class.
+ * SMTP user management class.
  */
 class SMTPAuthManage extends AuthManage {
 
@@ -21,7 +21,7 @@ class SMTPAuthManage extends AuthManage {
 	 * Add authenticaton service.
 	 *
 	 * @param string $host Service host. Add explicit encryption type
-	 *     prefix ssl://... etc. if necessary but WITHOUT the port.
+	 *     prefix ssl://... etc. if necessary, but WITHOUT the port.
 	 * @param int $port Service port.
 	 * @param bool $ssl Use TLS if true.
 	 * @param int $timeout Connect timeout in seconds.
