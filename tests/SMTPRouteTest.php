@@ -1,19 +1,26 @@
 <?php
 
+
 require_once(__DIR__ . '/SMTPCommon.php');
 
 
+use BFITech\ZapAdmin\Error;
 use BFITech\ZapAdmin\SMTPError;
 
 
 class SMTPRouteTest extends SMTPCommon {
+
+	public function make_zcore() {
+		return $this->make_zcore_from_class(
+			"\\BFITech\\ZapAdmin\\SMTPRouteDefault");
+	}
 
 	public function test_list_service() {
 		extract(self::vars());
 
 		$bogus = self::get_account('bogus');
 
-		list($router, $rdev, $core) = $this->make_router();
+		list($router, $rdev, $core) = $this->make_zcore();
 
 		$rdev
 			->request('/smtp/srv')
@@ -28,9 +35,8 @@ class SMTPRouteTest extends SMTPCommon {
 
 		$bogus = self::get_account('bogus');
 
-		list($router, $rdev, $core) = $this->make_router();
-
 		# incomplete data
+		list($zcore, $rdev, $core) = $this->make_zcore();
 		$post = [
 			'host' => $bogus['host'],
 			'port' => $bogus['port'],
@@ -38,14 +44,15 @@ class SMTPRouteTest extends SMTPCommon {
 		];
 		$rdev
 			->request('/smtp/auth', 'POST', ['post' => $post])
-			->route('/smtp/auth', [$router, 'route_smtp_auth'], 'POST');
+			->route('/smtp/auth', [$zcore, 'route_smtp_auth'], 'POST');
 		$eq($core::$errno, SMTPError::AUTH_INCOMPLETE_DATA);
 
 		# service down or invalid cred
+		list($zcore, $rdev, $core) = $this->make_zcore();
 		$post['password'] = $bogus['password'];
 		$rdev
 			->request('/smtp/auth', 'POST', ['post' => $post])
-			->route('/smtp/auth', [$router, 'route_smtp_auth'], 'POST');
+			->route('/smtp/auth', [$zcore, 'route_smtp_auth'], 'POST');
 		$eq($core::$errno, SMTPError::CONNECT_FAILED);
 	}
 
@@ -59,9 +66,8 @@ class SMTPRouteTest extends SMTPCommon {
 			return;
 		}
 
-		list($router, $rdev, $core) = $this->make_router();
-
 		# wrong password
+		list($zcore, $rdev, $core) = $this->make_zcore();
 		$post = [
 			'host' => $valid['host'],
 			'port' => $valid['port'],
@@ -70,29 +76,34 @@ class SMTPRouteTest extends SMTPCommon {
 		];
 		$rdev
 			->request('/smtp/auth', 'POST', ['post' => $post])
-			->route('/smtp/auth', [$router, 'route_smtp_auth'], 'POST');
+			->route('/smtp/auth', [$zcore, 'route_smtp_auth'], 'POST');
 		$eq($core::$errno, SMTPError::AUTH_FAILED);
 
 		# success
+		list($zcore, $rdev, $core) = $this->make_zcore();
 		$post['password'] = $valid['password'];
 		$rdev
 			->request('/smtp/auth', 'POST', ['post' => $post])
-			->route('/smtp/auth', [$router, 'route_smtp_auth'], 'POST');
+			->route('/smtp/auth', [$zcore, 'route_smtp_auth'], 'POST');
 		$eq($core::$errno, 0);
-		$data = $core::$data;
+		$data = $core::$data;  # for later use, see below
 		$token = $data['token'];
 
-		# relogin will fail
+		# already signed in
+		list($zcore, $rdev, $core) = $this->make_zcore();
 		$rdev
-			->request('/smtp/auth', 'POST', ['post' => $post])
-			->route('/smtp/auth', [$router, 'route_smtp_auth'], 'POST');
-		$this->assertEquals($core::$code, 403);
+			->request('/smtp/auth', 'POST', ['post' => $post], [
+				'testing' => $token,
+			])
+			->route('/smtp/auth', [$zcore, 'route_smtp_auth'], 'POST');
+		$eq($core::$code, 401);
+		$eq($core::$errno, Error::USER_ALREADY_LOGGED_IN);
 
 		# login afresh
-		list($router, $rdev, $core) = $this->make_router();
+		list($zcore, $rdev, $core) = $this->make_zcore();
 		$rdev
 			->request('/smtp/auth', 'POST', ['post' => $post])
-			->route('/smtp/auth', [$router, 'route_smtp_auth'], 'POST');
+			->route('/smtp/auth', [$zcore, 'route_smtp_auth'], 'POST');
 		$eq($data['uid'], $core::$data['uid']);
 		$eq($data['uname'], $core::$data['uname']);
 		$ne($data['token'], $core::$data['token']);

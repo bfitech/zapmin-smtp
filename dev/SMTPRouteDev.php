@@ -5,6 +5,7 @@ namespace BFITech\ZapAdminDev;
 
 
 use BFITech\ZapAdmin\SMTPRouteDefault;
+use BFITech\ZapAdmin\Error;
 use BFITech\ZapAdmin\SMTPError;
 use BFITech\ZapCore\Common;
 
@@ -23,11 +24,10 @@ class SMTPRouteDev extends SMTPRouteDefault {
 	 *
 	 * @see apidoc
 	 *
+	 * @if TRUE
 	 * @api {post} /smtp/fake-auth SMTPAuthFake
 	 * @apiDescription
 	 *     Authenticate a fake user. For development only.
-	 *
-	 * @cond
 	 * @apiName SMTPAuthFake
 	 * @apiGroup SMTP
 	 * @apiParam (POST) {String} host SMTP host.
@@ -39,27 +39,30 @@ class SMTPRouteDev extends SMTPRouteDefault {
 	 * @apiSuccess {Int} data.uid User ID.
 	 * @apiSuccess {String} data.uname Zapmin user identifier.
 	 * @apiSuccess {String} data.token Session token.
-	 * @apiError (401) {Int=1} errno User already signed in.
+	 * @apiError (401) {Int=
+	 *     Error::USER_ALREADY_LOGGED_IN
+	 * } errno User already signed in.
 	 * @apiError (403) {Int=SMTPError::*} errno Specific error number.
 	 *     See code documentation.
-	 * @endcond
+	 * @endif
 	 */
 	public function route_smtp_auth(array $args) {
-
 		$core = self::$core;
+		$manage = self::$manage;
+		$log = $manage::$logger;
 
 		if (!defined('ZAPMIN_SMTP_DEV'))
 			return $core::pj([1], 401);
 
+		if ($manage->is_logged_in())
+			# already signed in
+			return $core::pj([Error::USER_ALREADY_LOGGED_IN], 401);
+
 		$post = $args['post'];
-
-		$manage = self::$manage;
-
 		$host = $port = $username = $password = null;
 		if (!Common::check_idict($post, [
 			'host', 'port', 'username', 'password'
 		]))
-
 			return $core::pj([SMTPError::AUTH_INCOMPLETE_DATA], 403);
 		extract($post);
 
@@ -85,16 +88,22 @@ class SMTPRouteDev extends SMTPRouteDefault {
 			'uname' => $username,
 			'uservice' => $uservice,
 		]);
-		if ($ret[0] !== 0)
-			return $core::pj($ret, 403);
-		$token = $ret[1]['token'];
+
+		$token_name = $this->token_name;
+		$token_value = $ret[1]['token'];
 
 		# alway autologin on success
 		$admin = $manage::$admin;
-		$manage->set_token_value($token);
-		$expiration = $admin::$store->time() + $admin->get_expiration();
-		$core::send_cookie(
-			$admin->get_token_name(), $token, $expiration, '/');
+		$expires = $admin::$store->time() + $admin->get_expiration();
+		$core::send_cookie_with_opts($token_name, $token_value, [
+			'path' => '/',
+			'expires' => $expires,
+			'httponly' => true,
+			'samesite' => 'Lax',
+		]);
+		$log->debug(sprintf(
+			"ZapSMTP: Set cookie: [%s -> %s].",
+			$token_name, $token_value));
 
 		return $core::pj($ret);
 	}
@@ -108,11 +117,10 @@ class SMTPRouteDev extends SMTPRouteDefault {
 	 *
 	 * @see apidoc
 	 *
+	 * @if TRUE
 	 * @api {get} /smtp/fake-status SMTPStatusFake
 	 * @apiDescription
 	 *     Get user status. For development only.
-	 *
-	 * @cond
 	 * @apiName SMTPStatusFake
 	 * @apiGroup SMTP
 	 * @apiSuccess {Int=0} errno Success.
@@ -125,8 +133,10 @@ class SMTPRouteDev extends SMTPRouteDefault {
 	 * @apiSuccess {String} data.fname=null Full name.
 	 * @apiSuccess {String} data.site=null User website.
 	 * @apiSuccess {Date} data.since Registration date.
-	 * @apiError (401) {Int=1} errno User not signed in.
-	 * @endcond
+	 * @apiError (401) {Int=
+	 *     Error::USER_NOT_LOGGED_IN
+	 * } errno User not signed in.
+	 * @endif
 	 */
 	public function route_fake_status() {
 		return self::$core->pj(self::$ctrl->get_safe_user_data());

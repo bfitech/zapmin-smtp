@@ -5,7 +5,7 @@
 #---------------------------------------------------------------------------
 DOXYFILE_ENCODING      = UTF-8
 PROJECT_NAME           = "Zapmin SMTP"
-PROJECT_NUMBER         = "2.1"
+PROJECT_NUMBER         = "2.3"
 PROJECT_BRIEF          = "SMTP extension for zapmin."
 PROJECT_LOGO           =
 OUTPUT_DIRECTORY       = ./docs
@@ -105,7 +105,7 @@ WARN_LOGFILE           =
 #---------------------------------------------------------------------------
 INPUT                  = src \
                          dev \
-                         vendor/bfitech/zapmin/src/Route.php \
+                         vendor/bfitech/zapmin/src/RouteAdmin.php \
                          vendor/bfitech/zapmin/src/Auth.php \
                          vendor/bfitech/zapmin/src/AuthManage.php
 INPUT_ENCODING         = UTF-8
@@ -204,7 +204,6 @@ EXTRA_SEARCH_MAPPINGS  =
 # Configuration options related to the dot tool
 #---------------------------------------------------------------------------
 CLASS_DIAGRAMS         = YES
-MSCGEN_PATH            =
 DIA_PATH               =
 HIDE_UNDOC_RELATIONS   = YES
 HAVE_DOT               = YES

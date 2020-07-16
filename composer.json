@@ -10,8 +10,8 @@
     }
   ],
   "require": {
-    "php": ">=7.0 <7.4",
-    "bfitech/zapmin": "~2.1",
+    "php": ">=7.0 <7.5",
+    "bfitech/zapmin": "2.3.*",
     "phpmailer/phpmailer": "~6.0"
   },
   "require-dev": {
@@ -29,13 +29,12 @@
   },
   "autoload-dev": {
     "psr-4": {
-      "BFITech\\ZapCoreDev\\": "vendor/bfitech/zapcore/dev",
-      "BFITech\\ZapAdminDev\\": "dev"
+      "BFITech\\ZapCoreDev\\": "vendor/bfitech/zapcore/dev"
     }
   },
   "extra": {
     "branch-alias": {
-      "dev-master": "2.1.x-dev"
+      "dev-master": "2.3.x-dev"
     }
   }
 }

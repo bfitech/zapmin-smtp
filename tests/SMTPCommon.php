@@ -3,7 +3,6 @@
 
 use BFITech\ZapCore\Logger;
 use BFITech\ZapCore\Config;
-use BFITech\ZapCoreDev\RouterDev;
 use BFITech\ZapCoreDev\RoutingDev;
 use BFITech\ZapCoreDev\TestCase;
 use BFITech\ZapStore\SQLite3;
@@ -18,6 +17,8 @@ abstract class SMTPCommon extends TestCase {
 	public static $logger;
 	public static $core;
 	public static $cfile;
+
+	private static $sql;
 
 	public static function setUpBeforeClass() {
 		$logfile = self::tdir(__FILE__) . '/zapmin-smtp.log';
@@ -56,16 +57,24 @@ abstract class SMTPCommon extends TestCase {
 			$accounts, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
 	}
 
+	public function setUp() {
+		self::$logger->debug("TEST STARTED");
+	}
+
+	public function tearDown() {
+		self::$sql = null;
+		self::$logger->debug("TEST DONE");
+	}
+
 	public static function get_account($account) {
 		return (new Config(self::$cfile))->get($account);
 	}
 
-
 	public function make_smtp() {
-
 		$log = self::$logger;
-		$store = new SQLite3(['dbname' => ':memory:'], $log);
-		$admin = new Admin($store, $log);
+		if (!self::$sql)
+			self::$sql = new SQLite3(['dbname' => ':memory:'], $log);
+		$admin = new Admin(self::$sql, $log);
 		$admin
 			->config('expire', 3600)
 			->config('token_name', 'testing')
@@ -79,17 +88,18 @@ abstract class SMTPCommon extends TestCase {
 		return $manage;
 	}
 
-	public function make_router() {
+	public function make_zcore_from_class($router_class) {
 		$manage = $this->make_smtp();
 		$log = $manage::$logger;
-		$core = (new RouterDev())
+		$rdev = new RoutingDev;
+		$core = $rdev::$core
 			->config('home', '/')
 			->config('shutdown', false)
 			->config('logger', $log);
-		$rdev = new RoutingDev($core);
 		$ctrl = new AuthCtrl($manage::$admin, $log);
-		$router = new SMTPRouteDefault($core, $ctrl, $manage);
-		return [$router, $rdev, $core];
+		$zcore = new $router_class($core, $ctrl, $manage);
+		return [$zcore, $rdev, $core];
 	}
+
 }
 
